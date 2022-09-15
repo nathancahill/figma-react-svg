@@ -1,0 +1,24 @@
+{
+  "name": "figma-react-svg",
+  "version": "1.0.7",
+  "main": "index.js",
+  "author": "Nathan Cahill",
+  "license": "MIT",
+  "bin": {
+    "figma-react-svg": "./figma-react-svg.mjs"
+  },
+  "dependencies": {
+    "@svgr/core": "^6.3.1",
+    "@svgr/plugin-jsx": "^6.3.1",
+    "@svgr/plugin-svgo": "^6.3.1",
+    "async-await-queue": "^1.2.1",
+    "axios": "^0.27.2",
+    "cli-progress": "^3.11.2",
+    "lodash": "^4.17.21",
+    "prettier": "^2.7.1",
+    "yargs": "^17.5.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.23.1"
+  }
+}

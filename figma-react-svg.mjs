@@ -48,6 +48,9 @@ yargs(hideBin(process.argv))
         .option("prettier-config", {
           describe: "Path to prettier config file",
         })
+        .option("current-color", {
+          describe: "Color to use for currentColor in stroke and fill",
+        })
         .option("concurrency", {
           describe: "Number of parallel requests to the Figma API",
           default: 10,

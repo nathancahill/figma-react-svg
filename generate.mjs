@@ -19,6 +19,7 @@ export const generate = async (argv) => {
     storybookTitle,
     storybookGrid,
     prettierConfig,
+    currentColor,
     concurrency,
     delay,
     rename,
@@ -77,7 +78,14 @@ export const generate = async (argv) => {
       processQueue
         .wait(key)
         .then(() =>
-          generateFile(fileId, node, directory, componentName, prettierOptions)
+          generateFile(
+            fileId,
+            node,
+            directory,
+            componentName,
+            currentColor,
+            prettierOptions
+          )
         )
         .catch((e) => console.error(e))
         .finally(() => {
@@ -175,6 +183,7 @@ const generateFile = async (
   node,
   directory,
   componentName,
+  currentColor,
   prettierOptions
 ) => {
   const component = componentName.replace(
@@ -195,7 +204,13 @@ const generateFile = async (
     component
   );
 
-  const formatted = prettier.format(file, {
+  const fileWithCurrentColor = currentColor
+    ? file
+        .replaceAll(`stroke="${currentColor}"`, `stroke="currentColor"`)
+        .replaceAll(`fill="${currentColor}"`, `fill="currentColor"`)
+    : file;
+
+  const formatted = prettier.format(fileWithCurrentColor, {
     filepath,
     ...prettierOptions,
   });

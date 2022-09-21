@@ -148,7 +148,13 @@ export const generate = async (argv) => {
           ${successful
             .map((r) => {
               return r.propVariants
-                .map((propVariant) => `<${r.componentName} ${propVariant} />`)
+                .map((propVariant) => {
+                  if (propVariant) {
+                    return `<${r.componentName} ${propVariant} />`;
+                  } else {
+                    return `<${r.componentName} />`;
+                  }
+                })
                 .join("\n");
             })
             .join("\n")}
@@ -226,30 +232,36 @@ const generateFile = async (
 };
 
 const generateIconFileContent = async (fileId, node, componentName) => {
-  let componentInterface = `import React from 'react';\n\nexport interface ${componentName}Props {\n`;
-
   const componentProps = Object.keys(node.variantProperties);
 
-  for (const componentProp of componentProps) {
-    const variants = node.variantProperties[componentProp].map((variant) =>
-      isBoolean(variant) ? variant : `"${variant}"`
-    );
+  let componentInterface = `import React from 'react';\n\nexport type ${componentName}Props = React.HTMLAttributes<SVGElement>`;
 
-    if (variants)
-      if (variants.every((variant) => isBoolean(variant))) {
-        componentInterface += `    ${componentProp}?: boolean;\n`;
-      } else {
-        componentInterface += `    ${componentProp}: ${variants.join(
-          " | "
-        )};\n`;
+  if (componentProps.length > 0) {
+    componentInterface += `& {\n`;
+
+    for (const componentProp of componentProps) {
+      const variants = node.variantProperties[componentProp].map((variant) =>
+        isBoolean(variant) ? variant : `"${variant}"`
+      );
+
+      if (variants) {
+        if (variants.every((variant) => isBoolean(variant))) {
+          componentInterface += `    ${componentProp}?: boolean;\n`;
+        } else {
+          componentInterface += `    ${componentProp}: ${variants.join(
+            " | "
+          )};\n`;
+        }
       }
+    }
+    componentInterface += `};\n\n`;
+  } else {
+    componentInterface += `;\n\n`;
   }
 
-  componentInterface += `}\n\n`;
-
-  let component = `${componentInterface}export const ${componentName}: React.FC<${componentName}Props> = ({ ${componentProps.join(
-    ", "
-  )}, ...props }) => {\n`;
+  let component = `${componentInterface}export const ${componentName}: React.FC<${componentName}Props> = ({ ${
+    componentProps.length ? componentProps.join(", ") + "," : ""
+  } ...props }) => {\n`;
 
   const variantNodeIds = node.variantNodes.map((variantNode) => variantNode.id);
   const svgUrls = await api.getSvgImageUrls(fileId, variantNodeIds);
@@ -257,51 +269,61 @@ const generateIconFileContent = async (fileId, node, componentName) => {
   const propVariants = [];
 
   for (const variantNode of node.variantNodes) {
-    const variantIfStatement = variantNode.properties
-      .map((p) => {
-        const prop = Object.keys(p)[0];
+    if (variantNode.properties.length) {
+      const variantIfStatement = variantNode.properties
+        .map((p) => {
+          const prop = Object.keys(p)[0];
 
-        if (isBoolean(p[prop])) {
-          if (p[prop]) {
-            return `${prop}`;
+          if (isBoolean(p[prop])) {
+            if (p[prop]) {
+              return `${prop}`;
+            } else {
+              return `!${prop}`;
+            }
           } else {
-            return `!${prop}`;
+            return `${prop} === "${p[prop]}"`;
           }
-        } else {
-          return `${prop} === "${p[prop]}"`;
-        }
-      })
-      .join(" && ");
+        })
+        .join(" && ");
 
-    const variantProps = variantNode.properties
-      .map((p) => {
-        const prop = Object.keys(p)[0];
+      const variantProps = variantNode.properties
+        .map((p) => {
+          const prop = Object.keys(p)[0];
 
-        if (isBoolean(p[prop])) {
-          if (p[prop]) {
-            return `${prop}`;
+          if (isBoolean(p[prop])) {
+            if (p[prop]) {
+              return `${prop}`;
+            } else {
+              return ``;
+            }
           } else {
-            return ``;
+            return `${prop}="${p[prop]}"`;
           }
-        } else {
-          return `${prop}="${p[prop]}"`;
-        }
-      })
-      .join(" ");
+        })
+        .join(" ");
 
-    propVariants.push(variantProps);
+      propVariants.push(variantProps);
 
-    component += `    if (${variantIfStatement}) {\n`;
+      component += `    if (${variantIfStatement}) {\n`;
+    } else {
+      propVariants.push(null);
+    }
 
     const iconJsx = await fetchSvg(svgUrls[variantNode.id]);
 
     component += `        return (\n`;
     component += iconJsx;
     component += `        );\n`;
-    component += `    }\n\n`;
+
+    if (variantNode.properties.length) {
+      component += `    }\n\n`;
+    }
   }
 
-  component += `    return null;\n`;
+  if (componentProps.length) {
+    component += `    return null;\n`;
+  }
+
   component += `};\n`;
 
   return {
@@ -318,6 +340,18 @@ const fetchSvg = async (iconUrl) => {
     {
       plugins: ["@svgr/plugin-svgo", "@svgr/plugin-jsx"],
       template: (variables) => variables.jsx,
+      svgoConfig: {
+        plugins: [
+          {
+            name: "preset-default",
+            params: {
+              overrides: {
+                removeViewBox: false,
+              },
+            },
+          },
+        ],
+      },
     },
     { componentName: "Icon" }
   );
